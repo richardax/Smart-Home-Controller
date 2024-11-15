@@ -1,1 +1,139 @@
+# This is an example of using ESPHome over API
+# If you keep your details in secret.yaml it should work as is
+# Depending on application, you can change "sleep_duration: 1min #set how long time you want between readings"
 
+substitutions:
+  name: aa-battery-esp
+  friendly_name: AA-battery-ESP
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  min_version: 2024.6.0
+  name_add_mac_suffix: true
+  project:
+    name: esphome.web
+    version: dev
+  on_boot:
+  - priority: 1001
+    then:
+      - lambda: |- #we need to manually turn on awake before I2C is turned on (at prio 1000), or I2C will be held low and boot will halt
+          pinMode(39, OUTPUT);
+          digitalWrite(39, HIGH);
+  - priority: 600
+    then:
+      - logger.log: 'Wake up, connect, send data, go back to sleep'
+      - script.execute: consider_deep_sleep
+
+esp32:
+  board: esp32-s2-saola-1
+  framework:
+    type: arduino
+
+logger:
+  level: NONE #save some power by turning logging off
+  hardware_uart:
+    UART0
+
+#mqtt:
+#  broker: !secret mqtt_broker
+#  username: !secret mqtt_username
+#  password: !secret mqtt_password
+#  discovery: True
+#  discover_ip: True
+#  birth_message:
+#  will_message:
+
+api:
+  encryption:
+    key: "HdAuOlEsNL72Ltg1sUvQQLHQ5j6ktqbw6xBGuIg/eJA="
+
+wifi:
+  # Set up a wifi access point
+  ap:
+    ssid: "batteryESP"
+    password: "batteryESP"
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  fast_connect: true
+  #output_power: 13dB #output power can be reduced in order to save power if AP is not too far away
+#  manual_ip: #set static IP, may speed up wifi connection
+#    static_ip: 192.168.68.92
+#    gateway: 192.168.68.1
+#    subnet: 255.255.252.0
+#    dns1: 192.168.68.1
+#    dns2: 8.8.8.8
+
+#dashboard_import:
+#  package_import_url: github://esphome/example-configs/esphome-web/esp32.yaml@main
+#  import_full_config: true
+
+i2c:
+  sda: GPIO41
+  scl: GPIO42
+
+sensor:
+  - platform: aht10
+    variant: AHT20 #yes, has to be AHT20 even if the sensor is actually AHT10
+    temperature:
+      name: "Temperature"
+    humidity:
+      name: "Humidity"
+    update_interval: 1s
+
+  - platform: adc
+    pin: GPIO04
+    id: battery_voltage
+    name: "Battery V"
+    icon: mdi:battery
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    attenuation: 12dB
+    samples: 10
+    update_interval: 1s
+    filters:
+      - multiply: 3.0 
+
+  - platform: template
+    name: "Battery %"
+    update_interval: 1s
+    accuracy_decimals: 0
+    lambda: |-
+      return constrain((((id(battery_voltage).state-3.2)/1.3)*100), 0, 100);
+    unit_of_measurement: "%"  
+    device_class: battery
+
+  - platform: uptime
+    type: seconds
+    name: Uptime
+    update_interval: 1s
+
+  - platform: wifi_signal
+    name: "RSSI"
+    update_interval: 1s
+
+
+deep_sleep:
+  id: deep_sleep_control
+  sleep_duration: 10s #set how long time you want between readings
+
+script:
+  - id: consider_deep_sleep
+    mode: queued
+    then:
+      - repeat:
+          count: 200
+          then:
+            - if:
+                condition:
+                  #mqtt.connected:
+                  api.connected:
+                then:
+                  - logger.log: 'Connected!'
+                  - delay: 500ms ##we need a bit of time to let API sync
+                  - deep_sleep.enter: deep_sleep_control
+                else:
+                  - logger.log: 'Waiting for connection'
+                  - delay: 100ms
+      - logger.log: 'Did not connect, going back to sleep'
+      - deep_sleep.enter: deep_sleep_control
