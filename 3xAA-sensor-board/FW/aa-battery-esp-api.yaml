@@ -46,7 +46,7 @@ logger:
 
 api:
   encryption:
-    key: "HdAuOlEsNL72Ltg1sUvQQLHQ5j6ktqbw6xBGuIg/eJA="
+    key: "HdAuOlEsNL72Ltg1sUvQQLHQ5j6ktqbw6xBGuIg/eJA=" #replace with the key from your device
 
 wifi:
   # Set up a wifi access point
@@ -115,7 +115,7 @@ sensor:
 
 deep_sleep:
   id: deep_sleep_control
-  sleep_duration: 10s #set how long time you want between readings
+  sleep_duration: 10min #set how long time you want between readings
 
 script:
   - id: consider_deep_sleep
