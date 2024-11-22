@@ -1,11 +1,17 @@
 # This is an example of using ESPHome over MQTT
-# You will need a MQTT broker setup
 # If you keep your details in secret.yaml it should work as is
-# Depending on application, you can change "sleep_duration: 1min #set how long time you want between readings"
+
 
 substitutions:
-  name: aa-battery-esp-mqtt
-  friendly_name: AA-battery-ESP-MQTT
+  name: "rdnx-aa-ask-sleep"
+  friendly_name: "RDNX-AA-ask-sleep"
+#  friendly_name: "RDNX-AA-just-sleep"
+  # Allows ESP device to be automatically lined to an 'Area' in Home Assistant. Typically used for areas such as 'Lounge Room', 'Kitchen' etc
+  room: ""
+  device_description: "Rednexing AA ESP32"
+  project_name: "Rednexing.AA ESP32"
+  project_version: "0.0.1"
+  update_interval: never
 
 esphome:
   name: ${name}
@@ -13,8 +19,8 @@ esphome:
   min_version: 2024.6.0
   name_add_mac_suffix: true
   project:
-    name: esphome.web
-    version: dev
+    name: ${project_name}
+    version: ${project_version}
   on_boot:
   - priority: 1001
     then:
@@ -33,10 +39,11 @@ esp32:
 
 logger:
   level: NONE #save some power by turning logging off
-  hardware_uart:
-    UART0
+#  hardware_uart:
+#    UART0
 
 mqtt:
+  id: mqtt_cli
   broker: !secret mqtt_broker
   username: !secret mqtt_username
   password: !secret mqtt_password
@@ -44,18 +51,19 @@ mqtt:
   discover_ip: True
   birth_message:
   will_message:
+  discovery_unique_id_generator: mac
+
+ota:
+- platform: esphome
 
 #api:
 
 wifi:
-  # Set up a wifi access point
   ap:
-    ssid: "batteryESP"
-    password: "batteryESP"
   ssid: !secret wifi_ssid
   password: !secret wifi_password
   fast_connect: true
-  #output_power: 13dB #output power can be reduced in order to save power if AP is not too far away
+#  output_power: 13dB #output power can be reduced in order to save power if AP is not too far away, insufficient power may however slow down connection and thus consume more power
 #  manual_ip: #set static IP, may speed up wifi connection
 #    static_ip: 192.168.68.92
 #    gateway: 192.168.68.1
@@ -72,6 +80,7 @@ i2c:
   scl: GPIO42
 
 sensor:
+
   - platform: aht10
     variant: AHT20 #yes, has to be AHT20 even if the sensor is actually AHT10
     temperature:
@@ -83,6 +92,7 @@ sensor:
   - platform: adc
     pin: GPIO04
     id: battery_voltage
+    entity_category: diagnostic
     name: "Battery V"
     icon: mdi:battery
     unit_of_measurement: "V"
@@ -101,27 +111,118 @@ sensor:
       return constrain((((id(battery_voltage).state-3.2)/1.3)*100), 0, 100);
     unit_of_measurement: "%"  
     device_class: battery
+    entity_category: diagnostic
 
   - platform: uptime
     type: seconds
     name: Uptime
     update_interval: 1s
+    entity_category: diagnostic
 
   - platform: wifi_signal
-    name: "RSSI"
+    name: "Wifi dB"
+    id: wifi_signal_db
     update_interval: 1s
+    entity_category: diagnostic
 
+  - platform: copy
+    source_id: wifi_signal_db
+    name: "WiFi %"
+    filters:
+      - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
+    unit_of_measurement: "Signal %"
+    entity_category: "diagnostic"
+    device_class: ""
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address"
+      id: ip_address
+      entity_category: diagnostic
+    ssid:
+      name: "Connected SSID"
+      id: ssid
+      entity_category: diagnostic
+    mac_address:
+      name: "Mac Address"
+      id: mac_address
+      entity_category: diagnostic
+
+# Ccomment out below to remove the option to change sleep time and prevent sleep
+# Removing these options will reduce uptime and save some power
+number:
+  - platform: template
+    name: "Sleep duration sec"
+    id: sleep_duration_from_ha
+    unit_of_measurement: s
+    entity_category: diagnostic
+    optimistic: true
+    initial_value: 600
+    restore_value: true
+    command_retain: true
+    min_value: 0
+    max_value: 100000
+    step: 1
+
+  - platform: template
+    name: "Prevent sleep"
+    id: prevent_sleep
+    entity_category: diagnostic
+    optimistic: true
+    initial_value: 0
+    command_retain: true
+    min_value: 0
+    max_value: 1
+    step: 1
+# Comment out to here  
+
+button:
+  - platform: factory_reset
+    name: "Factory Reset"
+    id: Reset
+    disabled_by_default: true
+    entity_category: config
+
+binary_sensor:
+  - platform: status
+    name: "Status"
+    entity_category: diagnostic
+
+# Will only pick up a value if this device is configured in Home Assistant > Integrations
+# If the device isn't configured, or Home Assistant is offline, it'll default to false
+#  - platform: homeassistant
+#    id: prevent_sleep
+#    entity_id: input_boolean.prevent_sleep
+
+  - platform: gpio
+    pin:
+      number: GPIO00
+      mode: INPUT_PULLUP
+      inverted: true
+    name: "Boot Button"
+    disabled_by_default: true
+    on_multi_click:
+      - timing:
+        - ON for at least 4s
+        then:
+          - button.press: Reset
+
+light:
+  - platform: status_led
+    name: "Status LED"
+    disabled_by_default: true
+    pin: GPIO38
 
 deep_sleep:
   id: deep_sleep_control
-  sleep_duration: 1min #set how long time you want between readings
 
 script:
   - id: consider_deep_sleep
     mode: queued
     then:
       - repeat:
-          count: 200
+          count: 600
           then:
             - if:
                 condition:
@@ -129,10 +230,38 @@ script:
                   #api.connected:
                 then:
                   - logger.log: 'Connected!'
-                  - deep_sleep.enter: deep_sleep_control
+# Uncomment this part to go directly to sleep and remove the option to change sleep time and prevent sleep
+                  #- logger.log: 'Going back to sleep'  
+                  #- deep_sleep.enter: 
+                  #    id: deep_sleep_control
+                  #    sleep_duration: 1min
+# Uncomment to here
+
+# Ccomment out below to remove the option to change sleep time and prevent sleep
+# Removing these options will reduce uptime and save some power
+                  - delay: 500ms ##we need a bit of time to sync
+                  - if:
+                      condition:
+                        lambda: |-
+                          return id(prevent_sleep).state == 1;
+                        #on_value: binary_sensor.is_on: prevent_sleep
+                      then:
+                        - logger.log: 'Sleep prevented'
+                        - delay: 1s
+                        - script.execute: consider_deep_sleep
+                      else:
+                        - logger.log: 'Going back to sleep'  
+                        - deep_sleep.enter: 
+                            id: deep_sleep_control
+                            sleep_duration: !lambda |- 
+                                return id(sleep_duration_from_ha).state * 1000;
+# Comment out to here                                
+
                 else:
                   - logger.log: 'Waiting for connection'
                   - delay: 100ms
       - logger.log: 'Did not connect, going back to sleep'
-      - deep_sleep.enter: deep_sleep_control
-
+      - deep_sleep.enter:
+          id: deep_sleep_control
+          sleep_duration: !lambda |- 
+              return id(sleep_duration_from_ha).state * 1000;
