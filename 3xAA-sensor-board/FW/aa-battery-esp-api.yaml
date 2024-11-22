@@ -1,10 +1,10 @@
 # This is an example of using ESPHome over API
-# If you keep your details in secret.yaml it should work as is
-# Depending on application, you can change "sleep_duration: 1min #set how long time you want between readings"
+# If you keep your credentials in secret.yaml it should work as is
+# In order to change sleep duration a helper has to be added in Home Assistant, see row 165-171 below
 
 substitutions:
-  name: "rnx-aa"
-  friendly_name: "RNX-AA"
+  name: "rdnx-aa"
+  friendly_name: "RDNX-AA"
   # Allows ESP device to be automatically lined to an 'Area' in Home Assistant. Typically used for areas such as 'Lounge Room', 'Kitchen' etc
   room: ""
   device_description: "Rednexing AA ESP32"
@@ -18,8 +18,8 @@ esphome:
   min_version: 2024.6.0
   name_add_mac_suffix: true
   project:
-    name: "${project_name}"
-    version: "${project_version}"
+    name: ${project_name}
+    version: ${project_version}
   on_boot:
   - priority: 1001
     then:
@@ -37,18 +37,9 @@ esp32:
     type: arduino
 
 logger:
-#  level: NONE #save some power by turning logging off
-  hardware_uart:
-    UART0
-
-#mqtt:
-#  broker: !secret mqtt_broker
-#  username: !secret mqtt_username
-#  password: !secret mqtt_password
-#  discovery: True
-#  discover_ip: True
-#  birth_message:
-#  will_message:
+  level: NONE #save some power by turning logging off
+#  hardware_uart:
+#    UART0
 
 ota:
 - platform: esphome
@@ -68,26 +59,28 @@ wifi:
 #    dns1: 192.168.68.1
 #    dns2: 8.8.8.8
 
-#dashboard_import:
-#  package_import_url: github://esphome/example-configs/esphome-web/esp32.yaml@main
-#  import_full_config: true
+dashboard_import:
+  package_import_url: github://esphome/example-configs/esphome-web/esp32.yaml@main
+  import_full_config: true
 
 i2c:
   sda: GPIO41
   scl: GPIO42
 
 sensor:
+
   - platform: aht10
     variant: AHT20 #yes, has to be AHT20 even if the sensor is actually AHT10
     temperature:
       name: "Temperature"
     humidity:
       name: "Humidity"
-    update_interval: 1min
+    update_interval: 1s
 
   - platform: adc
     pin: GPIO04
     id: battery_voltage
+    entity_category: diagnostic
     name: "Battery V"
     icon: mdi:battery
     unit_of_measurement: "V"
@@ -106,16 +99,19 @@ sensor:
       return constrain((((id(battery_voltage).state-3.2)/1.3)*100), 0, 100);
     unit_of_measurement: "%"  
     device_class: battery
+    entity_category: diagnostic
 
   - platform: uptime
     type: seconds
     name: Uptime
     update_interval: 1s
+    entity_category: diagnostic
 
   - platform: wifi_signal
     name: "Wifi dB"
     id: wifi_signal_db
     update_interval: 1s
+    entity_category: diagnostic
 
   - platform: copy
     source_id: wifi_signal_db
@@ -146,9 +142,10 @@ number:
     name: "Sleep duration sec"
     id: sleep_duration_from_ha
     unit_of_measurement: s
+    entity_category: diagnostic
     optimistic: true
-    initial_value: 600
-    restore_value: true 
+    initial_value: 10
+    restore_value: true
     min_value: 0
     max_value: 100000
     step: 1
@@ -165,7 +162,9 @@ binary_sensor:
     name: "Status"
     entity_category: diagnostic
 
-# Will only pick up a value if this device is configured in Home Assistant > Integrations
+# Will only pick up a value if this device is configured in Home Assistant
+# -> Settings -> Devices & Services -> Helpers -> Add helper -> Toggle -> Name: prevent_sleep
+# Double check that the entity ID is input_boolean.prevent_sleep
 # If the device isn't configured, or Home Assistant is offline, it'll default to false
   - platform: homeassistant
     id: prevent_sleep
@@ -198,15 +197,14 @@ script:
     mode: queued
     then:
       - repeat:
-          count: 200
+          count: 600
           then:
             - if:
                 condition:
-                  #mqtt.connected:
                   api.connected:
                 then:
                   - logger.log: 'Connected!'
-                  - delay: 500ms ##we need a bit of time to let API sync
+                  - delay: 500ms ##we need a bit of time to sync
                   - if:
                       condition:
                         binary_sensor.is_on: prevent_sleep
@@ -219,12 +217,12 @@ script:
                         - deep_sleep.enter: 
                             id: deep_sleep_control
                             sleep_duration: !lambda |- 
-                                return id(sleep_duration_from_ha).state * 1000;
+                                return id(sleep_duration_from_ha).state * 1000;                            
                 else:
                   - logger.log: 'Waiting for connection'
-                  - delay: 300ms
+                  - delay: 100ms
       - logger.log: 'Did not connect, going back to sleep'
       - deep_sleep.enter:
           id: deep_sleep_control
           sleep_duration: !lambda |- 
-              return id(sleep_duration_from_ha).state * 1000;
+              return id(sleep_duration_from_ha).state * 1000;          
