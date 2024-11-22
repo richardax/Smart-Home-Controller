@@ -1,9 +1,9 @@
 # This is an example of using ESPHome over MQTT
 # If you keep your details in secret.yaml it should work as is
 
-
 substitutions:
   name: "rdnx-aa-ask-sleep"
+#  name: "rdnx-aa-just-sleep"
   friendly_name: "RDNX-AA-ask-sleep"
 #  friendly_name: "RDNX-AA-just-sleep"
   # Allows ESP device to be automatically lined to an 'Area' in Home Assistant. Typically used for areas such as 'Lounge Room', 'Kitchen' etc
@@ -149,7 +149,7 @@ text_sensor:
       id: mac_address
       entity_category: diagnostic
 
-# Ccomment out below to remove the option to change sleep time and prevent sleep
+# Comment below to remove the option to change sleep time and prevent sleep
 # Removing these options will reduce uptime and save some power
 number:
   - platform: template
@@ -158,7 +158,7 @@ number:
     unit_of_measurement: s
     entity_category: diagnostic
     optimistic: true
-    initial_value: 600
+    initial_value: 10
     restore_value: true
     command_retain: true
     min_value: 0
@@ -175,7 +175,7 @@ number:
     min_value: 0
     max_value: 1
     step: 1
-# Comment out to here  
+# Comment to here  
 
 button:
   - platform: factory_reset
@@ -231,13 +231,13 @@ script:
                 then:
                   - logger.log: 'Connected!'
 # Uncomment this part to go directly to sleep and remove the option to change sleep time and prevent sleep
-                  #- logger.log: 'Going back to sleep'  
-                  #- deep_sleep.enter: 
-                  #    id: deep_sleep_control
-                  #    sleep_duration: 1min
+#                  - logger.log: 'Going back to sleep'  
+#                  - deep_sleep.enter: 
+#                      id: deep_sleep_control
+#                      sleep_duration: 10s
 # Uncomment to here
 
-# Ccomment out below to remove the option to change sleep time and prevent sleep
+# Comment below to remove the option to change sleep time and prevent sleep
 # Removing these options will reduce uptime and save some power
                   - delay: 500ms ##we need a bit of time to sync
                   - if:
@@ -255,7 +255,7 @@ script:
                             id: deep_sleep_control
                             sleep_duration: !lambda |- 
                                 return id(sleep_duration_from_ha).state * 1000;
-# Comment out to here                                
+# Comment to here                                
 
                 else:
                   - logger.log: 'Waiting for connection'
@@ -263,5 +263,12 @@ script:
       - logger.log: 'Did not connect, going back to sleep'
       - deep_sleep.enter:
           id: deep_sleep_control
+# Uncomment this part to go directly to sleep and remove the option to change sleep time and prevent sleep          
+#          sleep_duration: 10s
+# Uncomment to here
+
+# Comment below to remove the option to change sleep time and prevent sleep
+# Removing these options will reduce uptime and save some power
           sleep_duration: !lambda |- 
               return id(sleep_duration_from_ha).state * 1000;
+# Comment to here 
