@@ -1,5 +1,5 @@
 # This is an example of using ESPHome over MQTT
-# If you keep your details in secret.yaml it should work as is
+# If you keep your credentials in secret.yaml it should work as is
 
 substitutions:
   name: "rdnx-aa-ask-sleep"
