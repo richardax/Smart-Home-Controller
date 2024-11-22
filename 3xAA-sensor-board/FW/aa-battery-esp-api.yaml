@@ -1,6 +1,6 @@
 # This is an example of using ESPHome over API
 # If you keep your credentials in secret.yaml it should work as is
-# In order to change sleep duration a helper has to be added in Home Assistant, see row 165-171 below
+# In order to change sleep duration and use OTA, sleep prevention has to be added in Home Assistant, see row 165-171 below
 
 substitutions:
   name: "rdnx-aa"
