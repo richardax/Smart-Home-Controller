@@ -1,7 +1,7 @@
 Examples codes are available in FW folder
 
 Note, in order to save power:
-- OTA is, but you need to prevent sleep and wait for it to wake ni order to use OTA
+- OTA can be used, but you need to prevent sleep and wait for it to wake ni order to use OTA
 - Autoprogramming has been disabled, you have to press BOOT while connecting the USB cable, or keep BOOT pressed while shortly pressing and releasing Reset.
 
 The API code is installed by default and should work as is together with Home Assistant
