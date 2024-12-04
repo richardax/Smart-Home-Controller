@@ -9,7 +9,7 @@
 substitutions:
   name: "rdnx-aa"
   friendly_name: "RDNX-AA"
-  initial_sleep_duration: "10" #set the sleep duration in sec to be used until changed in HA, you can set it here if you don't plane to change it in HA
+  initial_sleep_duration: "3600" #set the sleep duration in sec to be used until changed in HA, you can set it here if you don't plane to change it in HA
   device_description: "Rednexing AA ESP32"
   project_name: "Rednexing.AA ESP32"
   project_version: "0.0.1"
