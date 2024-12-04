@@ -1,13 +1,11 @@
 # This is an example of using ESPHome over MQTT
 # If you keep your credentials in secret.yaml it should work as is
+# You can choose to enable or disable the function of disabling sleep and set sleep duration.
+# You will save a little power by disabling these functions, but will then not be able to use OTA
 
 substitutions:
-  name: "rdnx-aa-ask-sleep"
-#  name: "rdnx-aa-just-sleep"
-  friendly_name: "RDNX-AA-ask-sleep"
-#  friendly_name: "RDNX-AA-just-sleep"
-  # Allows ESP device to be automatically lined to an 'Area' in Home Assistant. Typically used for areas such as 'Lounge Room', 'Kitchen' etc
-  room: ""
+  name: "rdnx-aa"
+  friendly_name: "RDNX-AA"
   device_description: "Rednexing AA ESP32"
   project_name: "Rednexing.AA ESP32"
   project_version: "0.0.1"
@@ -71,10 +69,6 @@ wifi:
 #    dns1: 192.168.68.1
 #    dns2: 8.8.8.8
 
-#dashboard_import:
-#  package_import_url: github://esphome/example-configs/esphome-web/esp32.yaml@main
-#  import_full_config: true
-
 i2c:
   sda: GPIO41
   scl: GPIO42
@@ -85,8 +79,10 @@ sensor:
     variant: AHT20 #yes, has to be AHT20 even if the sensor is actually AHT10
     temperature:
       name: "Temperature"
+      id: temperature
     humidity:
       name: "Humidity"
+      id: humidity
     update_interval: 1s
 
   - platform: adc
@@ -133,6 +129,42 @@ sensor:
     unit_of_measurement: "Signal %"
     entity_category: "diagnostic"
     device_class: ""
+
+platform: template
+    name: "Dew Point"
+    id: dewpoint
+    unit_of_measurement: "°C"
+    device_class: temperature
+    update_interval: 1s
+    lambda: |-
+      if (isnan(id(temperature).state) || isnan(id(humidity).state)) {
+        return NAN;
+      }
+      const float temp = id(temperature).state;
+      const float hum = id(humidity).state;
+      const float a = 17.27;
+      const float b = 237.7;
+      const float alpha = ((a * temp) / (b + temp)) + log(hum / 100.0);
+      const float dew_point = (b * alpha) / (a - alpha);
+      return dew_point;
+    icon: "mdi:weather-rainy"
+
+  - platform: template
+    name: "Mold Risk"
+    unit_of_measurement: "%"
+    update_interval: 1s
+    lambda: |-
+      if (isnan(id(temperature).state) || isnan(id(dewpoint).state)) {
+        return NAN;
+      }
+      const float temp = (id(temperature).state * 1.8) +32;
+      const float dew = (id(dewpoint).state * 1.8) +32;
+      
+      // Simplified calutation of mold risk temp - dew point, >10F = 0%, <5F =100% based on http://www.dpcalc.org
+      float value = ((dew + 10 - temp) / 5) * 100;
+      value = std::max(0.0f, std::min(100.0f, value));
+      return std::round(value);
+    icon: "mdi:asterisk"
 
 text_sensor:
   - platform: wifi_info
