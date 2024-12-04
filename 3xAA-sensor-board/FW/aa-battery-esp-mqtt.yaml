@@ -190,7 +190,7 @@ number:
     unit_of_measurement: s
     entity_category: diagnostic
     optimistic: true
-    initial_value: 10
+    initial_value: 3600
     restore_value: true
     command_retain: true
     min_value: 0
@@ -266,12 +266,12 @@ script:
 #                  - logger.log: 'Going back to sleep'  
 #                  - deep_sleep.enter: 
 #                      id: deep_sleep_control
-#                      sleep_duration: 10s
+#                      sleep_duration: 3600s
 # Uncomment to here
 
 # Comment below to remove the option to change sleep time and prevent sleep
 # Removing these options will reduce uptime and save some power
-                  - delay: 500ms ##we need a bit of time to sync
+                  - delay: 500ms #we need a bit of time to sync
                   - if:
                       condition:
                         lambda: |-
@@ -296,7 +296,7 @@ script:
       - deep_sleep.enter:
           id: deep_sleep_control
 # Uncomment this part to go directly to sleep and remove the option to change sleep time and prevent sleep          
-#          sleep_duration: 10s
+#          sleep_duration: 3600s
 # Uncomment to here
 
 # Comment below to remove the option to change sleep time and prevent sleep
