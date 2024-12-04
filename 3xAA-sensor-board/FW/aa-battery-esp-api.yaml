@@ -1,12 +1,15 @@
 # This is an example of using ESPHome over API
 # If you keep your credentials in secret.yaml it should work as is
-# In order to change sleep duration and use OTA, sleep prevention has to be added in Home Assistant, see row 165-171 below
+# In order to change sleep duration and use OTA, sleep prevention has to be added in Home Assistant
+  # -> Settings -> Devices & Services -> Helpers -> Add helper -> Toggle -> Name: prevent_sleep
+  # Double check that the entity ID is input_boolean.prevent_sleep
+  # If the device isn't configured, or Home Assistant is offline, it'll default to false
+  # If you don't need these features, you can set the sleep duration permanently in "substitution: initial_sleep_duration: sec"
 
 substitutions:
   name: "rdnx-aa"
   friendly_name: "RDNX-AA"
-  # Allows ESP device to be automatically lined to an 'Area' in Home Assistant. Typically used for areas such as 'Lounge Room', 'Kitchen' etc
-  room: ""
+  initial_sleep_duration: "10" #set the sleep duration in sec to be used until changed in HA, you can set it here if you don't plane to change it in HA
   device_description: "Rednexing AA ESP32"
   project_name: "Rednexing.AA ESP32"
   project_version: "0.0.1"
@@ -16,7 +19,7 @@ esphome:
   name: ${name}
   friendly_name: ${friendly_name}
   min_version: 2024.6.0
-  name_add_mac_suffix: true
+  name_add_mac_suffix: false
   project:
     name: ${project_name}
     version: ${project_version}
@@ -60,7 +63,7 @@ wifi:
 #    dns2: 8.8.8.8
 
 dashboard_import:
-  package_import_url: github://esphome/example-configs/esphome-web/esp32.yaml@main
+  package_import_url: github://richardax/Smart-Home-Controller/3xAA-sensor-board/FW/aa-battery-esp-api.yaml@main
   import_full_config: true
 
 i2c:
@@ -73,8 +76,10 @@ sensor:
     variant: AHT20 #yes, has to be AHT20 even if the sensor is actually AHT10
     temperature:
       name: "Temperature"
+      id: temperature
     humidity:
       name: "Humidity"
+      id: humidity
     update_interval: 1s
 
   - platform: adc
@@ -122,6 +127,42 @@ sensor:
     entity_category: "diagnostic"
     device_class: ""
 
+  - platform: template
+    name: "Dew Point"
+    id: dewpoint
+    unit_of_measurement: "°C"
+    device_class: temperature
+    update_interval: 1s
+    lambda: |-
+      if (isnan(id(temperature).state) || isnan(id(humidity).state)) {
+        return NAN;
+      }
+      const float temp = id(temperature).state;
+      const float hum = id(humidity).state;
+      const float a = 17.27;
+      const float b = 237.7;
+      const float alpha = ((a * temp) / (b + temp)) + log(hum / 100.0);
+      const float dew_point = (b * alpha) / (a - alpha);
+      return dew_point;
+    icon: "mdi:weather-rainy"
+
+  - platform: template
+    name: "Mold Risk"
+    unit_of_measurement: "%"
+    update_interval: 1s
+    lambda: |-
+      if (isnan(id(temperature).state) || isnan(id(dewpoint).state)) {
+        return NAN;
+      }
+      const float temp = (id(temperature).state * 1.8) +32;
+      const float dew = (id(dewpoint).state * 1.8) +32;
+      
+      // Simplified calutation of mold risk temp - dew point, >10F = 0%, <5F =100% based on http://www.dpcalc.org
+      float value = ((dew + 10 - temp) / 5) * 100;
+      value = std::max(0.0f, std::min(100.0f, value));
+      return std::round(value);
+    icon: "mdi:asterisk"
+
 text_sensor:
   - platform: wifi_info
     ip_address:
@@ -144,7 +185,7 @@ number:
     unit_of_measurement: s
     entity_category: diagnostic
     optimistic: true
-    initial_value: 10
+    initial_value: ${initial_sleep_duration}
     restore_value: true
     min_value: 0
     max_value: 100000
@@ -162,10 +203,6 @@ binary_sensor:
     name: "Status"
     entity_category: diagnostic
 
-# Will only pick up a value if this device is configured in Home Assistant
-# -> Settings -> Devices & Services -> Helpers -> Add helper -> Toggle -> Name: prevent_sleep
-# Double check that the entity ID is input_boolean.prevent_sleep
-# If the device isn't configured, or Home Assistant is offline, it'll default to false
   - platform: homeassistant
     id: prevent_sleep
     entity_id: input_boolean.prevent_sleep
