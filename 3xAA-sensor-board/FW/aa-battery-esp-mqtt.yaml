@@ -54,8 +54,6 @@ mqtt:
 ota:
 - platform: esphome
 
-#api:
-
 wifi:
   ap:
   ssid: !secret wifi_ssid
@@ -130,7 +128,7 @@ sensor:
     entity_category: "diagnostic"
     device_class: ""
 
-platform: template
+  - platform: template
     name: "Dew Point"
     id: dewpoint
     unit_of_measurement: "°C"
