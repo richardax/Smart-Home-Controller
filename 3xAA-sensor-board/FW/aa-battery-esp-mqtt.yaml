@@ -221,12 +221,6 @@ binary_sensor:
     name: "Status"
     entity_category: diagnostic
 
-# Will only pick up a value if this device is configured in Home Assistant > Integrations
-# If the device isn't configured, or Home Assistant is offline, it'll default to false
-#  - platform: homeassistant
-#    id: prevent_sleep
-#    entity_id: input_boolean.prevent_sleep
-
   - platform: gpio
     pin:
       number: GPIO00
