@@ -1,0 +1,56 @@
+# This is the preinstalled code, it will setup an AP to select wifi, then download the API code to be installed
+
+substitutions:
+  name: "rdnx-aa"
+  friendly_name: "RDNX-AA"
+  device_description: "Rednexing AA ESP32"
+  project_name: "Rednexing.AA ESP32"
+  project_version: "0.0.1"
+  update_interval: never
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  min_version: 2024.6.0
+  name_add_mac_suffix: true
+  project:
+    name: ${project_name}
+    version: ${project_version}
+  on_boot:
+    then:
+      - lambda: |- #turn on awake light
+          pinMode(39, OUTPUT);
+          digitalWrite(39, HIGH);
+
+esp32:
+  board: esp32-s2-saola-1
+  framework:
+    type: arduino
+
+logger:
+  hardware_uart:
+    UART0
+
+api:
+
+ota:
+- platform: esphome
+
+improv_serial:
+
+wifi:
+  ap: {}
+
+web_server:
+
+captive_portal:
+
+dashboard_import:
+  package_import_url: github://richardax/Smart-Home-Controller/3xAA-sensor-board/FW/aa-battery-esp-api.yaml@main
+  import_full_config: true
+
+light:
+  - platform: status_led
+    name: "Status LED"
+    disabled_by_default: true
+    pin: GPIO38
