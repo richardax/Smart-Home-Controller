@@ -103,7 +103,7 @@ sensor:
     lambda: |-
       const float fullBat = 4.6; //change based on battery specs
       const float emptyBat = 3.8; //change based on battery specs
-      return constrain((((id(battery_voltage).state-emptyBat)/(fullBat-emptyBat)*100), 0, 100); 
+      return constrain((((id(battery_voltage).state-emptyBat)/(fullBat-emptyBat))*100), 0, 100); 
     unit_of_measurement: "%"  
     device_class: battery
     entity_category: diagnostic
