@@ -10,7 +10,7 @@ MQTT will update faster and more reliably, i.e. saving battery, but you will hav
 Setup:
 - Power up the device by inserting 3xAA batteries or by connecting a USB cable
 - The awake LED will turn on and the status LED will blink (meaning not connected)
-- Connect to the AP (WiFi) "rdnx-aa-xxxxxx" (xxxxxx representing the last three bytes of the MAC address)
+- Connect to the AP (WiFi) "rdnx-aa"
 - Enter 192.168.4.1 in a browser and choose your network
 
 In Home Assistant:
@@ -23,7 +23,7 @@ In Home Assistant:
 - Go to ESPHome add-on (not the integration)
 - The device will be discovered, press Adopt
 - You will be asked to rename it if you want, press Adopt
-- Configuration created, you can press install here, or make some changes if you want to (not that once you install, the device will sleep most of the time and you will need to take some extra steps to install via OTA, or use USB)
+- Configuration created, you can press install here, or make some changes if you want to (note that once you install, the device will sleep most of the time and you will need to take some extra steps to install via OTA, or use USB)
 - To check the code and make changes:
   - Press skip, not install
   - Press close
@@ -43,7 +43,7 @@ To use MQTT instead of API (note that you don't need the sleep prevention helper
 
 - Power up the device by inserting 3xAA batteries or by connecting a USB cable
 - The awake LED will turn on and the status LED will blink (meaning not connected)
-- Connect to the AP (WiFi) "rdnx-aa-xxxxxx" (xxxxxx representing the last three bytes of the MAC address)
+- Connect to the AP (WiFi) "rdnx-aa"
 - Enter 192.168.4.1 in a browser and choose your network 
 
 In Home Assistant:
