@@ -19,7 +19,7 @@ esphome:
   name: ${name}
   friendly_name: ${friendly_name}
   min_version: 2024.6.0
-  name_add_mac_suffix: true
+  name_add_mac_suffix: false
   project:
     name: ${project_name}
     version: ${project_version}
